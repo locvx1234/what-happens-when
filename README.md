@@ -13,10 +13,32 @@ Tài liệu tiếng Trung https://github.com/skyline75489/what-happens-when-zh_C
 ## Mục lục 
 
 - [Khi nhấn phím "g"](#g-key)
-- [The "enter" key bottoms out]
-- [Interrupt fires [NOT for USB keyboards]]
+- [Phím "enter" được ấn xuống](#enter)
+- [Ngắt (không dành cho bàn phím USB)](#interrupt)
+- [(Windows) Một thông điệp `WM_KEYDOWN` được gửi tới ứng dụng ](#windows)
+- [(Mac OS X) Một KeyDown NSEvent được gửi đến ứng dụng](#macosx)
+- [(GNU/Linux)  Xorg server lắng nghe mã phím ](#xorg)
+- [Phân tích URL](#url-parse)
+- [Đó có phải là một URL hay một cụm từ tìm kiếm?](#url-find)
+- [Chuyển đổi ký tự Unicode (không phải ASCII) trong tên máy chủ ](#unicode)
+- [Kiểm tra danh sách HSTS](#hsts)
+- [DNS lookup ](#dns)
+- [ARP process](#arp)
+- [Khởi tạo một socket ](#socket)
+- [TLS handshake](#tls)
+- [HTTP protocol](#http-protocol)
+- [Xử lý yêu cầu HTTP Server ](#http-request)
+- [Phía sau trình duyệt](#behind-browser)
+- [Trình duyệt](#browser)
+- [HTML parsing](#html)
+- [Thuật toán phân tích ](#algo-parse)
+- [CSS interpretation](#css)
+- [Page Rendering](#page)
+- [GPU Rendering](#gpu)
+- [Window Server](#win-server)
+- [Thực thi Post-rendering và user-induced](#post-rendering)
 
-<a name="g-key">
+<a name="g-key"></a>
 ### Khi nhấn phím "g"
 
 Các phần sau sẽ giải thích tất cả về cơ chế ngắt bàn phím và hệ điều hành hoạt động như nào. 
@@ -27,6 +49,7 @@ Hầu hết các thuật toán này ưu tiên các kết quả dựa trên lịc
 Bạn sẽ nhập tiếp "google.com" và không có vấn đề gì xảy ra, nhưng rất nhiều mã sẽ chạy trước khi bạn đến đó và mỗi lần nhấn phím, các đề xuất sẽ càng chính xác hơn. 
 Nó thậm chí có thể đề xuất "google.com" trước khi bạn gõ.
 
+<a name="enter"></a>
 ### Phím "enter" được ấn xuống 
 Để chọn một điểm bắt đầu, hãy nhấn phím Enter trên bàn phím.
 Tại thời điểm này, một mạch điện xác định cho phím `enter` được đóng lại (trực tiếp hoặc thông qua tụ điện). 
@@ -53,12 +76,14 @@ Sau đó, `screen controller` gây ra một ngắt, báo cáo vị trí nhấp c
 - Bàn phím ảo bây giờ có thể kích hoạt phần mềm để gửi thông điệp `key pressed` trở lại cho hệ điều hành.
 - Thông báo này được trả lại để thông báo cho ứng dụng đang hoạt động có sự kiện `key pressed`
 
+<a name="interrupt"></a>
 ### Ngắt (không dành cho bàn phím USB)
 
 Bàn phím gửi một tín hiệu trên đường dây yêu cầu gián đoạn (IRQ), và tín hiệu được ánh xạ bởi bộ điều khiển gián đoạn tới một vector ngắt (số nguyên).
 CPU sử dụng Bảng mô tả ngắt (Interrupt Descriptor Table - IDT) để lập bản đồ các vector gián đoạn tới các hàm (xử lý gián đoạn) do kernel cung cấp. 
 Khi một ngắt xuất hiện, CPU đánh chỉ mục các IDT với vector ngắt và chạy trình xử lý thích hợp. Do đó kernel được nhập vào.
 
+<a name="windows"></a>
 ### (Windows) Một thông điệp `WM_KEYDOWN` được gửi tới ứng dụng 
 
 HID được vận chuyển qua sự kiện ấn phím đến trình điều khiển `KBDHID.sys`, nó sẽ chuyển đổi HID thành scancode. 
@@ -78,7 +103,7 @@ Sau đó, hàm xử lý thông điệp chính (gọi là `WindowProc`) được 
 Cửa sổ (`hWnd`) đang hoạt động thực ra là một điều khiển chỉnh sửa và trong trường hợp này, `WindowProc` có một trình xử lý để xử lý các thông điệp `WM_KEYDOWN`. 
 Mã này xem bên trong tham số thứ ba đã được truyền đến `SendMessage(wParam)` bởi vì `VK_RETURN` biết người dùng đã nhấn phím ENTER.
 
-
+<a name="macosx"></a>
 ### (Mac OS X) Một KeyDown NSEvent được gửi đến ứng dụng
 
 Tín hiệu ngắt gây ra sự gián đoạn cho driver bàn phím I/O Kit Kext. 
@@ -87,7 +112,7 @@ Kết quả là, WindowServer gửi một sự kiện đến bất kỳ ứng d�
 Các sự kiện sau đó có thể được đọc từ hàng đợi này bởi hàm `mach_ipc_dispatch` với quyền hạn đủ cao.
 Điều này thường được tạo ra bởi một vòng lặp sự kiện chính - `NSApplication` , và được xử lý thông qua một `NSEvent` của `NSEventType KeyDown`.
 
-
+<a name="xorg"></a>
 ### (GNU/Linux)  Xorg server lắng nghe mã phím 
 
 Khi `X server` được sử dụng, X sẽ sử dụng trình điều khiển sự kiện chung `evdev` để có được phím bấm. 
@@ -95,6 +120,7 @@ X Server sẽ ánh xạ giá trị mã phím vào mã quét theo một quy tắc
 Khi quá trình lập bản đồ này hoàn thành, máy chủ X sẽ gửi ký tự cho trình quản lý cửa sổ (DWM, metacity, i3, vv), do đó trình quản lý cửa sổ sẽ gửi ký tự tới cửa sổ hiện tại. 
 API đồ hoạ của cửa sổ nhận ký tự sẽ in biểu tượng, font thích hợp.
 
+<a name="url-parse"></a>
 ### Phân tích URL
 
 Bây giờ trình duyệt có các thông tin sau trong URL (Uniform Resource Locator):
@@ -104,18 +130,20 @@ Giao thức : http (Sử dụng 'Hyper Text Transfer Protocol')
 Tài nguyên "/" (Truy xuất vào trang chủ)
 ```
 
+<a name="url-find"></a>
 ### Đó có phải là một URL hay một cụm từ tìm kiếm?
 
 Khi giao thức hoặc tên máy chủ không hợp lệ, trình duyệt tìm kiến văn bản sử dụng công cụ tìm kiếm mặc định.
 Trong nhiều trường hợp, URL có một đoạn văn bản đặc biệt được nối vào nó để báo cho công cụ tìm kiếm rằng nó là URL của trình duyệt cụ thể.
 
+<a name="unicode"></a>
 ### Chuyển đổi ký tự Unicode (không phải ASCII) trong tên máy chủ 
 
 - Trình duyệt sẽ kiểm tra xem đầu vào có chứa ký tự khác với a-z, A-Z, 0-9 hoặc ..
 
 - Ở đây, tên máy chủ là google.com, vì vậy không có ký tự không phải là ASCII, nếu có, trình duyệt sử dụng mã hóa [Punycode](https://en.wikipedia.org/wiki/Punycode) cho phần tên máy chủ lưu trữ
 
-
+<a name="hsts"></a>
 ### Kiểm tra danh sách HSTS
 
 - Trình duyệt kiểm tra danh sách "HSTS (HTTP Strict Transport Security) đã được tải trước". Đây là danh sách chứa các trang web yêu cầu trình duyệt kết nối chỉ sử dụng HTTPS.
@@ -124,6 +152,7 @@ Trong nhiều trường hợp, URL có một đoạn văn bản đặc biệt đ
 Yêu cầu HTTP đầu tiên cho trang web mà người dùng truy cập sẽ nhận được phản hồi yêu cầu người dùng chỉ gửi yêu cầu HTTPS. 
 Tuy nhiên, yêu cầu HTTP đơn này có thể khiến người dùng dễ bị [downgrade attack](https://en.wikipedia.org/wiki/Moxie_Marlinspike#Notable_research), đó là lý do tại sao danh sách HSTS được cấu hình sẵn trong các trình duyệt hiện tại)
 
+<a name="dns"></a>
 ### DNS lookup 
 
 - Trình duyệt kiểm tra xem domain nằm trong cache hay không. (Xem cache Google chrome : chrome://net-internals/#dns	)
@@ -134,7 +163,8 @@ Tuy nhiên, yêu cầu HTTP đơn này có thể khiến người dùng dễ b�
 - Nếu máy chủ DNS trên cùng một mạng con, hệ thống sẽ thực hiện `ARP process` đến máy chủ DNS 
 - Nếu máy chủ DNS trên mạng khác, hệ thống sẽ thực hiện `ARP process` đến default gateway
 
-## ARP process
+<a name="arp"></a>
+### ARP process
 
 Để gửi một ARP (Address Resolution Protocol) broadcast, chúng ta cần có một địa chỉ IP đích và chúng ta cũng cần phải biết địa chỉ MAC của giao diện đã được sử dụng để gửi phát ARP.
 
@@ -184,7 +214,8 @@ Bây giờ chúng ta có địa chỉ IP của máy chủ DNS hoặc cổng mặ
 - Sử dụng cổng 53 để gửi một gói tin UDP  request đến máy chủ DNS. Nếu gói phản hồi quá lớn, giao thức TCP sẽ được sử dụng.
 - Nếu máy chủ DNS cục bộ/ISP không tìm thấy kết quả, nó sẽ gửi một yêu cầu truy vấn đệ quy, truy vấn lớp máy chủ DNS cấp cao theo lớp cho đến khi nó tìm được ủy quyền ban đầu (SOA), nếu nó tìm thấy, nó sẽ trả về kết quả.
 
-### Mở một socket 
+<a name="socket"></a>
+### Khởi tạo một socket 
 
 Khi trình duyệt nhận được địa chỉ IP của máy chủ đích và số cổng được cung cấp trong URL (cổng mặc định http là 80, cổng mặc định https là 443), nó gọi đến thư viện hệ thống và và thực hiện cuộc gọi tới hàm thư viện hệ thống có tên socket và yêu cầu một luồng socket TCP - AF_INET / AF_INET6 và SOCK_STREAM.
 - Yêu cầu này đầu tiên được chuyển tới tầng Transport và đóng gói thành segment TCP. Port đích được thêm vào header, port nguồn được chọn động trong khoảng của kernel (ip_local_port_range  trong Linux)
@@ -224,6 +255,7 @@ Việc gửi và nhận này xảy ra nhiều lần theo dòng kết nối TCP:
 + Bên kia nhận gói tin FIN, sẽ gửi lại 1 gói FIN-ACK 
 + Bên đóng sẽ gửi gói ACK để xác nhận rằng FIN đã nhận được
 
+<a name="tls"></a>
 ### TLS handshake
 
 - Client gửi thông điệp `ClientHello` với phiên bản  Transport Layer Security (TLS) của nó, liệt kê các thuật toán mã hóa và phương thức nén khả dụng.
@@ -236,6 +268,7 @@ Các byte ngẫu nhiên này có thể dùng để xác định mã đối xứn
 - Server giải mã và băm thông điệp, so sánh giá trị băm được với giá trị băm client gửi có bằng nhau không. Nếu bằng nhau, nó sẽ gửi gói tin `Finished` tới client sử dụng mã hóa đối xứng.
 - Từ bây giờ, phiên TLS truyền dữ liệu ứng dụng (HTTP) được mã hóa bằng khóa đối xứng được đồng ý.
 
+<a name="http-protocol"></a>
 ### HTTP protocol
 
 Nếu sử dụng trình duyệt web được Google viết, thay vì gửi yêu cầu HTTP để truy xuất trang, nó sẽ gửi yêu cầu và thương lượng với server "upgrade" từ HTTP lên SPDY.
@@ -288,6 +321,7 @@ ngoại trừ GET / HTTP/1.1 yêu cầu sẽ là GET / $(URL tương đối vớ
 Nếu HTML tham chiếu tới một tài nguyên trên một miền khác với www.google.com, trình duyệt web sẽ quay trở lại các bước liên quan đến phân giải miền khác và làm theo tất cả các bước cho đến thời điểm này cho tên miền đó. 
 Tiêu đề Host trong yêu cầu sẽ được đặt thành tên máy chủ thích hợp thay vì google.com
 
+<a name="http-request"></a>
 ### Xử lý yêu cầu HTTP Server  
 
 Máy chủ HTTPD (HTTP Daemon) là một máy chủ xử lý yêu cầu/phản hồi ở phía máy chủ. 
@@ -304,12 +338,14 @@ Các máy chủ HTTPD phổ biến nhất là Apache hoặc nginx dành cho Linu
 - Máy chủ nhận được phản hồi tương ứng dựa trên thông tin yêu cầu. Trong trường hợp này, bởi vì đường dẫn truy cập là "/", nó sẽ truy cập tệp tin trang chủ (bạn có thể ghi đè quy tắc này, nhưng đây là cách phổ biến nhất).
 - Máy chủ sẽ sử dụng trình xử lý đã chỉ định để phân tích và xử lý file. Nếu Google sử dụng PHP, máy chủ sẽ sử dụng PHP để phân tích file index, trả về kết quả cho client.
 
+<a name="behind-browser"></a>
 ### Phía sau trình duyệt
 Khi máy chủ cung cấp các tài nguyên (HTML, CSS, JS, image, v.v.) cho trình duyệt, nó sẽ trải qua quá trình dưới đây:
 
 - Phân tích cú pháp HTML, CSS, JS
 - Rendering : Xây dựng DOM Tree → Render Tree → Phân lớp Render Tree → Vẽ Render Tree
 
+<a name="browser"></a>
 ### Trình duyệt 
 
 Chức năng của trình duyệt là truy xuất tài nguyên bạn muốn từ máy chủ và hiển thị nó trong cửa sổ trình duyệt. 
@@ -337,6 +373,7 @@ Các thành phần của trình duyệt bao gồm :
 - *JavaScript engine* : Phân tích và thực thi mã JavaScript
 - *Data storage* : Trình duyệt có thể cần lưu trữ nhiều loại dữ liệu cục bộ, chẳng hạn như các cookie. Các trình duyệt cũng cần hỗ trợ các cơ chế lưu trữ chẳng hạn như localStorage, IndexedDB, WebSQL và FileSystem
 
+<a name="html"></a>
 ### HTML parsing
 
 Rendering engine bắt đầu nhận nội dung của tài liệu được yêu cầu từ lớp mạng. Điều này thường sẽ được thực hiện trong khối 8kB.
@@ -348,6 +385,7 @@ DOM là viết tắt của Document Object Model.
 Đây là sự trình bày đối tượng của tài liệu HTML và giao diện các phần tử HTML và phần bên ngoài như JavaScript. Gốc của cây là đối tượng "Document".
 Toàn bộ DOM và tài liệu HTML là mối quan hệ gần như một-một.
 
+<a name="algo-parse"></a>
 #### Thuật toán phân tích 
 
 HTML không thể phân tích theo kiếu top-down hoặc bottom-up như thông thường.
@@ -371,13 +409,14 @@ Sau khi trạng thái của tài liệu thay đổi thành "complete", trình du
 
 Lưu ý rằng không bao giờ có lỗi "Invalid Syntax" khi phân tích cú pháp một trang web HTML, trình duyệt khắc phục bất kỳ nội dung không hợp lệ nào và sau đó tiếp tục phân tích cú pháp.
 
-
+<a name="css"></a>
 ### CSS interpretation
 
 - Phân tích các tệp CSS, nội dung thẻ <style> và các thuộc tính style bằng cách sử dụng "CSS lexical and syntax grammar"
 - Mỗi tệp CSS được phân tách thành một đối tượng StyleSheet, trong đó mỗi đối tượng chứa các quy tắc CSS với bộ chọn và các đối tượng tương ứng với ngữ pháp CSS.
 - Một trình phân tích cú pháp CSS có thể là từ trên xuống dưới hoặc từ dưới lên.
 
+<a name="page"></a>
 ### Page Rendering
 
 - Tạo 'Frame Tree' hoặc 'Render Tree' bằng cách đi qua các nút DOM, và tính các giá trị CSS style cho mỗi nút.
@@ -394,12 +433,16 @@ Lưu ý rằng không bao giờ có lỗi "Invalid Syntax" khi phân tích cú p
 - Cuối cùng, các vị trí layer được tính toán và các lệnh ghép được phát hành qua Direct3D/OpenGL. 
 Bộ đệm lệnh GPU được đưa vào GPU để hiển thị không đồng bộ và khung được gửi tới window server.
 
+<a name="gpu"></a>
 ### GPU Rendering
 - Trong quá trình render, lớp xử lý đồ họa có thể sử dụng một CPU mục đích chung, hoặc một GPU xử lý đồ họa
 - Khi sử dụng GPU để tính toán kết xuất đồ hoạ, các lớp phần mềm đồ họa chia công việc thành nhiều phần, vì vậy nó có thể tận dụng ưu thế song song lớn của GPU để tính toán điểm nổi trong quá trình dựng hình.
 
+<a name="win-server"></a>
 ### Window Server
-#### Thực thi Post-rendering và user-induced
+
+<a name="post-rendering"></a>
+### Thực thi Post-rendering và user-induced
 
 Sau khi hiển thị, trình duyệt chạy mã JavaScript (chẳng hạn như hình động của Google Doodle) hoặc tương tác với người dùng (nhập các thuật ngữ tìm kiếm trong thanh tìm kiếm) dựa trên cơ chế thời gian. 
 Plugin như Flash và Java sẽ chạy, mặc dù không có trong trang chủ của Google. 
